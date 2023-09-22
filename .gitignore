@@ -47,3 +47,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# large files
+data/Ricefield_data_for_lissage.csv
