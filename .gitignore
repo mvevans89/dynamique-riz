@@ -49,4 +49,4 @@ po/*~
 rsconnect/
 
 # large files
-data/Ricefield_data_for_lissage.csv
+data/RiceField_data_for_lissage.csv
