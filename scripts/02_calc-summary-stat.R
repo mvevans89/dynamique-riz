@@ -37,6 +37,7 @@ library(parallel)
 #data wrangling
 library(tidyr)
 library(lubridate)
+library(purrr)
 
 library(dplyr)
 
@@ -328,105 +329,85 @@ estimate_season_stats <- function(tseries_deriv, print_plot = FALSE){
 #' Get the average of stats per rice field
 #' @param tseries_stat data.frame of rice dynamics by season, output of estimate_season_stats
 #' @returns a one-row data.frame of 
-#' number of seasons per year (number of peaks)
-#' start of rice season (first start of season in a year)
-#' end of rice season (last end of a season in a year)
-#' average duration of season
-#' amount of time inactive
+#' number of seasons total
+#' number of years with more than 1 season
+#' number of inactive seasons over the full time period
+#' mode of start of rice season 1 (first start of season in a year)
+#' mode of end of rice season 1 (first end of a season in a year)
+#' mode of peak date of rice season 1
+#' mean duration of rice season 1
+#' mean amplitude of rice season 1
+#' mode of start of rice season 2 (second start of season in a year) [NA if only one season]
+#' mode of end of rice season 2 (second end of a season in a year) [NA if only one season]
+#' mode of peak date of rice season 2 [NA if only one season]
+#' mean duration of rice season 2 [NA if only one season]
+#' mean amplitude of rice season 2 [NA if only one season]
+
 calc_rice_avg <- function(tseries_stat){
   
-  #' number of seasons per year (number of peaks)
-  #' average duration of season
-  #' start of rice season (first start of season in a year)
-  #' end of rice season (last end of a season in a year)
-  #' peak of biggest season (date of peak of largest flooding)
-  #' amplitude (difference between max and min flood)
-  #' amount of time inactive
-  
   rice_avg_df <- tseries_stat |>
-    #only include 2017-2021 to make sure we get full seasons
+    #only include 2017-June 2022 to make sure we get full seasons
     filter(start_date >= as.Date("2017-01-01"),
-           end_date <= as.Date("2021-12-31")) |>
+           end_date <= as.Date("2022-06-30")) |>
     mutate(year_start = year(start_date)) |>
-    mutate(year_peak = year(peak_date)) 
+    mutate(year_peak = year(peak_date)) |>
+    #add months for calculation
+    mutate(month_start = month(start_date),
+           month_end = month(end_date),
+           month_peak = month(peak_date))
+  
+  #some rice fields are inactive the whole time, drop these
+  if(nrow(rice_avg_df)<1){
+    out <- data.frame(full_id = unique(tseries_stat$full_id)
+                      # num_season = as.numeric(NA),
+                      # year_2season = as.integer(NA),
+                      # num_inactive = as.integer(NA),
+                      # start_month_mode_season1 = as.numeric(NA),
+                      # end_month_mode_season1 = as.numeric(NA),
+                      # peak_month_mode_season1 = as.numeric(NA),
+                      # dur_day_mean_season1 = as.numeric(NA),
+                      # amp_mean_season1 = as.numeric(NA)
+                      )
+    return(out)
+  }
   
   num_season <- rice_avg_df |>
-    filter(state == "active") |>
+    group_by(full_id) |>
+    summarise(num_season = max(season_num))
+  
+  year_2season <- rice_avg_df |>
     group_by(year_peak) |>
     summarise(num_season = n()) |>
     ungroup() |>
-    summarise(avg_peak = mean(num_season, na.rm = T)) |>
-    pull(avg_peak)
+    summarise(year_2season = sum(num_season>1)) 
   
-  avg_duration <- rice_avg_df |>
-    filter(state == "active") |>
-    summarise(avg_dur = as.numeric(mean(season_dur, na.rm = T))) |>
-    pull(avg_dur)
+  num_inactive <- rice_avg_df |>
+    summarise(num_inactive = sum(state == "inactive"))
   
-  avg_start <- rice_avg_df |>
-    filter(state == "active") |>
-    #only get first in each year
-    group_by(year_start) |>
-    arrange(start_date) |>
-    slice(1)|>
-    ungroup() |>
-    summarise(avg_start = mean(yday(start_date), na.rm = T)) |>
-    pull(avg_start)
+  #create mode function
+  calc_mode <- function(x) {
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
   
-  avg_end <-  rice_avg_df |>
-    filter(state == "active") |>
-    mutate(year_end = year(end_date)) |>
-    #only get last in each year
-    group_by(year_end) |>
-    arrange(desc(end_date)) |>
-    slice(1)|>
-    ungroup() |>
-    summarise(avg_end = mean(yday(end_date), na.rm = T)) |>
-    pull(avg_end)
-  
-  avg_peak <- rice_avg_df |>
-    filter(state == "active") |>
-    mutate(year_peak = year(peak_date)) |>
+  stat_by_season <- rice_avg_df |>
+    mutate(amp = max_flood-min_flood) |>
+    #identify if season is first or second
     group_by(year_peak) |>
-    #only use biggest peak of the season
-    arrange(max_flood) |>
-    slice(1) |>
+    mutate(season_order = paste0("season", 1:n())) |> 
+    #calculate stats by season
+    group_by(season_order) |>
+    #drop any not corresponding to 1 or 2
+    filter(season_order %in% c("season1", "season2")) |>
+    summarise(start_month_mode = calc_mode(month_start),
+              end_month_mode = calc_mode(month_end),
+              peak_month_mode = calc_mode(month_peak),
+              dur_day_mean = as.numeric(mean(season_dur)),
+              amp_mean = mean(amp)) |>
     ungroup() |>
-    summarise(avg_peak = mean(yday(peak_date), na.rm = T)) |>
-    pull(avg_peak)
+    pivot_wider(names_from = "season_order", values_from = start_month_mode:amp_mean) 
   
-  avg_amp <- rice_avg_df |>
-    filter(state == "active") |>
-    mutate(year_peak = year(peak_date)) |>
-    rowwise() |>
-    mutate(amp = max_flood - min_flood) |>
-    group_by(year_peak) |>
-    summarise(avg_amp = mean(amp, na.rm = T)) |>
-    ungroup() |>
-    summarise(avg_amp = mean(avg_amp, na.rm = T)) |>
-    pull(avg_amp)
-  
-  prop_inactive <- rice_avg_df |>
-    summarise(prop_inactive = weighted.mean(state=="inactive", w = as.numeric(season_dur), na.rm = T)) |>
-    pull(prop_inactive)
-  
-  # to help with errors due to differing lengths
-  if(length(num_season)<1) num_season <- NA
-  if(length(avg_start)<1) avg_start <- NA
-  if(length(avg_end)<1) avg_end <- NA
-  if(length(avg_duration)<1) avg_duration<- NA
-  if(length(avg_peak)<1) avg_peak <- NA
-  if(length(prop_inactive)<1) prop_inactive<- NA
-  
-  
-  out <- data.frame(full_id = unique(tseries_stat$full_id),
-                    num_season = num_season,
-                    avg_start = avg_start,
-                    avg_end = avg_end,
-                    avg_duration = avg_duration,
-                    avg_peak = avg_peak,
-                    avg_amp = avg_amp,
-                    prop_inactive = prop_inactive)
+  out <- cbind(num_season, year_2season, num_inactive, stat_by_season)
   
   return(out)
   
@@ -436,13 +417,17 @@ calc_rice_avg <- function(tseries_stat){
 #' Should be mapped over data.frames of smoothed time-series
 #' @param ind_tseries an individual time series for a rice field
 #' @rerturn output of calc_rice_avg (one-row of rice field stats)
-wrap_rice <- function(ind_tseries){
+wrap_rice <- function(ind_tseries, return_intermediate = FALSE){
   suppressMessages({
   deriv1 <- deriv_tseries(ind_tseries, print_plot = FALSE)
   season_stat <- estimate_season_stats(deriv1, print_plot = FALSE)
   stat_avg <- calc_rice_avg(season_stat)
   })
   
+  if(return_intermediate){
+    return(list(season_stat, stat_avg))
+  } else
+    
   return(stat_avg)
   
 }
@@ -450,12 +435,12 @@ wrap_rice <- function(ind_tseries){
 
 # Load the Data ####################################
 
-rice_id <- qread("rice_id.qs")
+rice_id <- qread("data/rice_id.qs")
 
-test_smooth <- qread("flood-test_smooth.qs") #smaller df of 1000 rice fields for testing
+test_smooth <- qread("data/smooth/flood-test_smooth.qs") #smaller df of 1000 rice fields for testing
 
-ev_smooth <- qread("ev_smooth.qs")
-flood_smooth <- qread("flood_smooth.qs")
+ev_smooth <- qread("data/smooth/ev_smooth.qs")
+flood_smooth <- qread("data/smooth/flood_smooth.qs")
 
 # Run tests with functions ###############
 
@@ -475,9 +460,11 @@ rice_stat_avg <- calc_rice_avg(rice_stat_season)
 rice_stat_avg
 
 #within the wrapped function
-wrap_rice(filter(ev_smooth, full_id == "r14085422"))
+wrap_rice(filter(flood_smooth, full_id == "w569996661"), return_intermediate = TRUE)
 
 # Map function over full dataset #############################
+
+## Test mapping on subset ###################
 
 #create list of dataframes to map over
 test_list <- test_smooth |>
@@ -487,13 +474,21 @@ test_list <- test_smooth |>
 
 system.time({
   
-  test_out <- bind_rows(lapply(test_list, wrap_rice))
+  list_out <- mclapply(test_list, wrap_rice, return_intermediate = TRUE, mc.cores = 8)
+  
+  #seperate intermediate and final results
+  test_out <- list_out |>
+    transpose() |>
+    map(bind_rows) 
+  
+  head(test_out[[1]])
+  head(test_out[[2]])
+  
 }) #takes 18 seconds for 100 rice fields on 1 core (23 minutes for all on one core)
 
-
+#without getting intermediate data
 system.time({
-  
-  test_out <- bind_rows(mclapply(test_list, wrap_rice, mc.cores = 8))
+  test_out2 <- bind_rows(mclapply(test_list, wrap_rice, mc.cores = 8))
 }) #takes 3 seconds for 100 rice fields on 8 cores (6 minutes on 8 cores for all)
 
 ## Vegetated Water ####################
@@ -502,14 +497,23 @@ ev_list <- ev_smooth |>
   group_by(full_id) |>
   group_split()
 
-ev_out_list <- mclapply(ev_list, wrap_rice, mc.cores = 10)
+ev_out_list <- mclapply(ev_list, wrap_rice, mc.cores = 10, return_intermediate = TRUE)
 
-ev_out <- bind_rows(ev_out_list)
+#seperate intermediate and final results
+ev_out_split <- ev_out_list |>
+  transpose() |>
+  map(bind_rows)
+
+#full detail for each season of ricefield
+ev_stat_season <- ev_out_split[[1]]
+
 #bind with metadata
-ev_out <- left_join(ev_out, rice_id, by = "full_id")
+ev_stat_summary <- ev_out_split[[2]] |>
+  left_join(rice_id, by = "full_id")
 
 #save as a csv
-write.csv(ev_out, "results/ev_rice_summary.csv")
+write.csv(ev_stat_season, "results/ev_rice_season.csv", row.names = FALSE)
+write.csv(ev_stat_summary, "results/ev_rice_summary.csv", row.names = FALSE)
 
 ## Free Water #########################
 
@@ -517,49 +521,20 @@ flood_list <- flood_smooth |>
   group_by(full_id) |>
   group_split()
 
-flood_out <- bind_rows(mclapply(flood_list, wrap_rice, mc.cores = 10))
+flood_out_list <- mclapply(flood_list, wrap_rice, mc.cores = 10, return_intermediate = TRUE)
+
+#seperate intermediate and final results
+flood_out_split <- flood_out_list |>
+  transpose() |>
+  map(bind_rows)
+
+#full detail for each season of ricefield
+flood_stat_season <- flood_out_split[[1]]
 
 #bind with metadata
-flood_out <- left_join(flood_out, rice_id, by = "full_id")
+flood_stat_summary <- flood_out_split[[2]] |>
+  left_join(rice_id, by = "full_id")
 
 #save as a csv
-write.csv(flood_out, "results/flood_rice_summary.csv")
-
-# Fokontany Level Statistics ####################################
-
-#' Here is just an example of how we could calculate these in R.
-
-library(sf)
-flood_out <- read.csv("results/flood_rice_summary.csv")
-fkt_poly <- st_read("ifd_fokontany.gpkg") |>
-  mutate(comm_fkt = paste(new_commune, fokontany, sep = "_"))
-
-flood_out |>
-  group_by(comm_fkt) |>
-  summarise(mean_duration = mean(avg_duration, na.rm = T)) |>
-  ungroup() |>
-  left_join(fkt_poly) |>
-  st_as_sf() |>
-  ggplot() +
-  geom_sf(aes(fill = mean_duration))
-
-flood_out |>
-  group_by(comm_fkt) |>
-  summarise(mean_start = mean(avg_start, na.rm = T)) |>
-  ungroup() |>
-  left_join(fkt_poly) |>
-  st_as_sf() |>
-  ggplot() +
-  geom_sf(aes(fill = mean_start))
-
-#' proportion of rice fields with multiple seasons during the 
-#' time period at least once
-flood_out |>
-  group_by(comm_fkt) |>
-  summarise(prop_2season = mean(num_season>1, na.rm = T)) |>
-  ungroup() |>
-  left_join(fkt_poly) |>
-  st_as_sf() |>
-  ggplot() +
-  geom_sf(aes(fill = prop_2season))
-  
+write.csv(flood_stat_season, "results/flood_rice_season.csv", row.names = FALSE)
+write.csv(flood_stat_summary, "results/flood_rice_summary.csv", row.names = FALSE)

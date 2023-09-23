@@ -147,7 +147,7 @@ flood_smooth <- bind_rows(map(.x = unique(flood_long$full_id), .f = get_smooth,
                               rice_df = flood_long))
 
 #save as qs objects
-qsave(rice_id, "rice_id.qs")
+qsave(rice_id, "data/rice_id.qs")
 qsave(flood_test, "data/smooth/flood-test_smooth.qs", nthreads = 4)
 qsave(ev_smooth, "data/smooth/ev_smooth.qs", nthreads = 4)
 qsave(flood_smooth, "data/smooth/flood_smooth.qs", nthreads = 4)
