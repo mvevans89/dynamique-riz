@@ -24,9 +24,9 @@ Ce script créer les calculs de rizières par saison et par riziére. Il y a plu
 
 Le fonction `wrap_rice` est appliqué en parallel, par defaut avec 8 cores. Avec 8 cores, il prendre 15 minutes pour tout le script.
 
-Les resultats sont enregistré dans les csv .....
+Les resultats sont enregistré dans le dossier `results`.
 
 ### `03_stat-foktonany.R`
 
-Ce script est un exemple de comment calculé les statistique au niveau de fokontany.
+Ce script est un exemple de comment calculer les statistiques au niveau de fokontany.
 
