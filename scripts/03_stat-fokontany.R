@@ -54,6 +54,16 @@ flood_out |>
   geom_sf(aes(fill = mean_start)) +
   ggtitle("Moyenne mois de commencement de premier saison")
 
+flood_out |>
+  group_by(comm_fkt) |>
+  summarise(mean_start = mean(start_month_mode_season2, na.rm = T)) |>
+  ungroup() |>
+  left_join(fkt_poly) |>
+  st_as_sf() |>
+  ggplot() +
+  geom_sf(aes(fill = mean_start)) +
+  ggtitle("Moyenne mois de commencement\nde deuxieme saison")
+
 #' proportion of rice fields with 2 seasons at least once
 flood_out |>
   group_by(comm_fkt) |>

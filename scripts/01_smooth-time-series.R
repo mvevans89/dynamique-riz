@@ -16,6 +16,7 @@
 # Packages and Options ###############################
 
 options(stringsAsFactors = FALSE, scipen = 999)
+inspect = FALSE #set to true to view plots
 
 #plotting
 library(ggplot2); theme_set(theme_bw())
@@ -127,6 +128,21 @@ flood_long <- select(rice_data, full_id, starts_with("sum")) |>
   pivot_longer(starts_with("sum"), names_to = "date", values_to = "perc") |>
   mutate(date = substr(date, 7, 14)) |>
   mutate(date = as.Date(date, format = "%Y%m%d"))
+
+## Plot raw data ?
+if(inspect){
+  flood_long |>
+    filter(full_id %in% sample(full_id,4)) |>
+    ggplot(aes(x = date, y = perc)) +
+    geom_point() +
+    facet_wrap(~full_id)
+  
+  get_smooth(this_rice = "w690190105",
+             rice_df = flood_long,
+             print_plot = TRUE)
+}
+
+
 
 # Smooth #############
 #takes about 20 minutes to do each smooth

@@ -444,8 +444,9 @@ flood_smooth <- qread("data/smooth/flood_smooth.qs")
 
 # Run tests with functions ###############
 
-# tseries_test <- filter(ev_smooth, full_id == "w689278817")
+# tseries_test <- filter(ev_smooth, full_id == "w685365201")
 tseries_test <- filter(ev_smooth, full_id == sample(rice_id$full_id,1))
+# tseries_test <- filter(ev_smooth, full_id == "w682437182")
 
 # Identify peaks and valleys
 tseries_deriv <- deriv_tseries(tseries_test, print_plot = T)
@@ -455,7 +456,7 @@ tseries_deriv <- deriv_tseries(tseries_test, print_plot = T)
 rice_stat_season <- estimate_season_stats(tseries_deriv, print_plot = T)
 rice_stat_season
 
-#one value for each stat per rice field
+st#one value for each stat per rice field
 rice_stat_avg <- calc_rice_avg(rice_stat_season)
 rice_stat_avg
 
