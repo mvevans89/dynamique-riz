@@ -305,6 +305,15 @@ estimate_season_stats <- function(tseries_deriv, print_plot = FALSE){
   
 }
 
+#' Function to return agricultural year
+#' Agricultural year is defined as that starting in July (i.e. July 2016 - June 2017 is considered rice2016)
+get_ag_year <- function(input_date){
+  true_year <- lubridate::year(input_date)
+  second_year <- lubridate::month(input_date)<=6
+  true_year[second_year] <- true_year[second_year] - 1
+  return(paste0("rice", true_year))
+}
+
 #' Get the average of stats per rice field
 #' @param tseries_stat data.frame of rice dynamics by season, output of estimate_season_stats
 #' @returns a one-row data.frame of 
@@ -329,11 +338,11 @@ calc_rice_avg <- function(tseries_stat){
   rice_avg_df <- tseries_stat |>
     #remove inactive seasons
     filter(state != "inactive") |>
-    #only include 2017-June 2022 to make sure we get full seasons
-    filter(start_date >= as.Date("2017-01-01"),
+    #only include July 2016 -June 2022 to make sure we get full seasons
+    filter(start_date >= as.Date("2016-07-01"),
            end_date <= as.Date("2022-06-30")) |>
-    mutate(year_start = year(start_date)) |>
-    mutate(year_peak = year(peak_date)) |>
+    mutate(year_start = get_ag_year(start_date)) |>
+    mutate(year_peak = get_ag_year(peak_date)) |>
     #add months for calculation
     mutate(month_start = month(start_date),
            month_end = month(end_date),
@@ -382,10 +391,10 @@ calc_rice_avg <- function(tseries_stat){
     #identify if season is first or second
     group_by(year_peak) |>
     mutate(season_order = paste0("season", 1:n())) |> 
-    #calculate stats by season
-    group_by(season_order) |>
     #drop any not corresponding to 1 or 2
     filter(season_order %in% c("season1", "season2")) |>
+    #calculate stats by season
+    group_by(season_order) |>
     summarise(start_month_mode = calc_mode(month_start),
               end_month_mode = calc_mode(month_end),
               peak_month_mode = calc_mode(month_peak),
@@ -393,6 +402,8 @@ calc_rice_avg <- function(tseries_stat){
               dur_day_median = as.numeric(median(season_dur)),
               amp_mean = mean(amp)) |>
     ungroup() |>
+    #rename season_prim and season_sec
+    mutate(season_order = ifelse(season_order == "season1", "seasonPrim", "seasonSec")) |>
     pivot_wider(names_from = "season_order", values_from = start_month_mode:amp_mean) 
   
   out <- cbind(num_season, year_2season, num_inactive, stat_by_season)

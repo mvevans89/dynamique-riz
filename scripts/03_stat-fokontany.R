@@ -36,7 +36,7 @@ fkt_poly <- st_read("data/ifd_fokontany.gpkg") |>
 
 flood_out |>
   group_by(comm_fkt) |>
-  summarise(mean_duration = mean(dur_day_mean_season1, na.rm = T)) |>
+  summarise(mean_duration = mean(dur_day_mean_seasonPrim, na.rm = T)) |>
   ungroup() |>
   left_join(fkt_poly) |>
   st_as_sf() |>
@@ -46,7 +46,7 @@ flood_out |>
 
 flood_out |>
   group_by(comm_fkt) |>
-  summarise(mean_start = mean(start_month_mode_season1, na.rm = T)) |>
+  summarise(mean_start = mean(start_month_mode_seasonPrim, na.rm = T)) |>
   ungroup() |>
   left_join(fkt_poly) |>
   st_as_sf() |>
@@ -56,7 +56,7 @@ flood_out |>
 
 flood_out |>
   group_by(comm_fkt) |>
-  summarise(mean_start = mean(start_month_mode_season2, na.rm = T)) |>
+  summarise(mean_start = mean(start_month_mode_seasonSec, na.rm = T)) |>
   ungroup() |>
   left_join(fkt_poly) |>
   st_as_sf() |>
