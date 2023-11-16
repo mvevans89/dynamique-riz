@@ -336,8 +336,6 @@ get_ag_year <- function(input_date){
 calc_rice_avg <- function(tseries_stat){
   
   rice_avg_df <- tseries_stat |>
-    #remove inactive seasons
-    filter(state != "inactive") |>
     #only include July 2016 -June 2022 to make sure we get full seasons
     filter(start_date >= as.Date("2016-07-01"),
            end_date <= as.Date("2022-06-30")) |>

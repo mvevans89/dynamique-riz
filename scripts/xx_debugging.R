@@ -1,4 +1,12 @@
 
+
+ev_season <- read.csv("results/ev_rice_season.csv")
+unique(ev_season$state)
+sum(ev_season$state=="inactive")
+
+inact <- filter(ev_season, state =="inactive")
+
+
 ## Nov 8 2023 #######################
 #functions
 source("scripts/source/summarizing-functions.R")
@@ -15,7 +23,7 @@ hist(flood_sum$dur_day_mean_season1)
 
 test_id <- long$full_id[1]
 
-# test_id <- sample(flood_sum$full_id,1)
+test_id <- sample(flood_sum$full_id,1)
 
 
 # tseries_test <- filter(ev_smooth, full_id == sample(rice_id$full_id,1))
