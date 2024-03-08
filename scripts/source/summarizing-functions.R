@@ -301,6 +301,10 @@ estimate_season_stats <- function(tseries_deriv, print_plot = FALSE){
     print(p1)
   }
   
+  if(print_plot){
+    return(list(tseries_stat, p1))
+  }
+  
   return(tseries_stat)
   
 }
