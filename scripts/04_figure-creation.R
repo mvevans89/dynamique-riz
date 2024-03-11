@@ -39,8 +39,6 @@ source("scripts/source/summarizing-functions.R")
 
 # Load Data ################################
 
-
-
 smooth_subset <- qread("data/smooth/flood-test_smooth.qs") #smaller df of 1000 rice fields for testing
 
 flood_raw <- read.csv("data/RiceField_data_for_lissage.csv") |>
@@ -70,6 +68,8 @@ smooth_plot <- filter(smooth_subset, full_id %in% figure_id) |>
   ylab("Percent Flooded Area") +
   facet_wrap(~full_id, nrow = 2, scales = "free") +
   theme(strip.background = element_blank())
+
+#pour changer, utiliser theme(axis.text = element_text(size = 14))
 
 #it is better to use a script to save figures, this ensures the resolution is 
 #always the same
@@ -105,7 +105,7 @@ rice_stat_season[[1]]
 
 season_plot <- rice_stat_season[[2]] +
   ylab("Percent Flooded Area") +
-  xlab("Date")
+  xlab("Date") 
 
 png("figures/seasons.png", res = 300, width = 1200, height = 600)
 season_plot

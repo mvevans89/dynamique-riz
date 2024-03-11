@@ -47,12 +47,12 @@ source("scripts/source/summarizing-functions.R")
 
 # Load the Data ####################################
 
-rice_id <- qread("data/rice_id.qs")
+rice_id <- qread("data/rice_id_above400.qs")
 
-test_smooth <- qread("data/smooth/flood-test_smooth.qs") #smaller df of 1000 rice fields for testing
+test_smooth <- qread("data/smooth/above400/flood-test_smooth.qs") #smaller df of 1000 rice fields for testing
 
-ev_smooth <- qread("data/smooth/ev_smooth.qs")
-flood_smooth <- qread("data/smooth/flood_smooth.qs")
+ev_smooth <- qread("data/smooth/above400/ev_smooth.qs")
+flood_smooth <- qread("data/smooth/above400/flood_smooth.qs")
 
 # Run tests with functions ###############
 
@@ -68,7 +68,7 @@ rice_stat_season <- estimate_season_stats(tseries_deriv, print_plot = T)
 rice_stat_season
 
 #one value for each stat per rice field
-rice_stat_avg <- calc_rice_avg(rice_stat_season)
+rice_stat_avg <- calc_rice_avg(rice_stat_season[[1]])
 rice_stat_avg
 
 #within the wrapped function
@@ -109,6 +109,8 @@ ev_list <- ev_smooth |>
   group_by(full_id) |>
   group_split()
 
+# ev_out_test <- lapply(ev_list[100:400], wrap_rice, return_intermediate = TRUE)
+
 ev_out_list <- mclapply(ev_list, wrap_rice, mc.cores = 10, return_intermediate = TRUE)
 
 #seperate intermediate and final results
@@ -123,11 +125,14 @@ ev_stat_season <- ev_out_split[[1]]
 ev_stat_summary <- ev_out_split[[2]] |>
   left_join(rice_id, by = "full_id")
 
-#save as a csv
-write.csv(ev_stat_season, "results/ev_rice_season.csv", row.names = FALSE)
-write.csv(ev_stat_summary, "results/ev_rice_summary.csv", row.names = FALSE)
+#assess how many had errors
+sum(is.na(ev_stat_summary$num_season)) #22
 
-## Free Water #########################
+#save as a csv
+write.csv(ev_stat_season, "results/above400/ev_rice_season.csv", row.names = FALSE)
+write.csv(ev_stat_summary, "results/above400/ev_rice_summary.csv", row.names = FALSE)
+
+## All Water #########################
 
 flood_list <- flood_smooth |>
   group_by(full_id) |>
@@ -147,6 +152,8 @@ flood_stat_season <- flood_out_split[[1]]
 flood_stat_summary <- flood_out_split[[2]] |>
   left_join(rice_id, by = "full_id")
 
+sum(is.na(flood_stat_summary$num_season))
+
 #save as a csv
-write.csv(flood_stat_season, "results/flood_rice_season.csv", row.names = FALSE)
-write.csv(flood_stat_summary, "results/flood_rice_summary.csv", row.names = FALSE)
+write.csv(flood_stat_season, "results/above400/flood_rice_season.csv", row.names = FALSE)
+write.csv(flood_stat_summary, "results/above400/flood_rice_summary.csv", row.names = FALSE)

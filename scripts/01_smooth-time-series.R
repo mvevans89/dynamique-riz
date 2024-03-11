@@ -32,9 +32,15 @@ library(dplyr)
 # Load Data #####################################
 
 #extraire les donnees de zip si ce n'est pas encore fais
-unzip("data/RiceField_data_for_lissage.zip", exdir = "data")
+# unzip("data/RiceField_data_for_lissage.zip", exdir = "data")
 
-rice_data <- read.csv("data/RiceField_data_for_lissage.csv")
+# rice_data <- read.csv("data/RiceField_data_for_lissage.csv")
+
+rice_data <- read.csv("data/new_perc_data_cb.csv") |>
+  filter(superficie > 400)
+
+#get comm-fkt for some of them
+old_riceID <- qread("data/rice_id.qs")
 
 # Define Functions ##############################
 
@@ -117,8 +123,9 @@ get_smooth <- function(this_rice, rice_df, print_plot = FALSE, return_details = 
 # Clean and Format Rice Data ###################
 #' we want to create a long dataset of vegetated water (EV) and a long dataset of
 #' all water (sumELEV)
-rice_id <- select(rice_data, full_id, perc_max, osm_id, rcf_superficie, comm_fkt) |>
-  distinct()
+rice_id <- select(rice_data, full_id, superficie) |>
+  distinct() |>
+  left_join(select(old_riceID, full_id, osm_id, comm_fkt))
 ev_long <- select(rice_data, full_id, starts_with("EV")) |>
   pivot_longer(starts_with("EV"), names_to = "date", values_to = "perc") |>
   mutate(date = substr(date, 3, 10)) |>
@@ -152,18 +159,20 @@ get_smooth(this_rice = unique(flood_long$full_id)[8001],
            print_plot = TRUE)
 
 system.time({
-  flood_test <- bind_rows(map(.x = unique(flood_long$full_id)[1:1000], .f = get_smooth,
+  plan(multisession, workers = 8)
+  flood_test <- bind_rows(future_map(.x = unique(flood_long$full_id)[1:1000], .f = get_smooth,
                                rice_df = flood_long))
 })
 
 #should probably parallize this?
-ev_smooth <- bind_rows(map(.x = unique(ev_long$full_id), .f = get_smooth,
+plan(multisession, workers = 10)
+ev_smooth <- bind_rows(future_map(.x = unique(ev_long$full_id), .f = get_smooth,
                            rice_df = ev_long))
-flood_smooth <- bind_rows(map(.x = unique(flood_long$full_id), .f = get_smooth,
+flood_smooth <- bind_rows(future_map(.x = unique(flood_long$full_id), .f = get_smooth,
                               rice_df = flood_long))
 
 #save as qs objects
-qsave(rice_id, "data/rice_id.qs")
-qsave(flood_test, "data/smooth/flood-test_smooth.qs", nthreads = 4)
-qsave(ev_smooth, "data/smooth/ev_smooth.qs", nthreads = 4)
-qsave(flood_smooth, "data/smooth/flood_smooth.qs", nthreads = 4)
+qsave(rice_id, "data/rice_id_above400.qs")
+qsave(flood_test, "data/smooth/above400/flood-test_smooth.qs", nthreads = 4)
+qsave(ev_smooth, "data/smooth/above400/ev_smooth.qs", nthreads = 4)
+qsave(flood_smooth, "data/smooth/above400/flood_smooth.qs", nthreads = 4)

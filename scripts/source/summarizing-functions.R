@@ -420,10 +420,25 @@ calc_rice_avg <- function(tseries_stat){
 #' @rerturn output of calc_rice_avg (one-row of rice field stats)
 wrap_rice <- function(ind_tseries, return_intermediate = FALSE){
   suppressMessages({
-    deriv1 <- deriv_tseries(ind_tseries, print_plot = FALSE)
-    season_stat <- estimate_season_stats(deriv1, print_plot = FALSE)
-    stat_avg <- calc_rice_avg(season_stat)
-  })
+    deriv1 <- tryCatch(
+      {deriv_tseries(ind_tseries, print_plot = FALSE)
+      }, error = function(msg){
+        return(data.frame(full_id = ind_tseries$full_id[[1]]))
+      })
+  
+    
+    season_stat <- tryCatch(
+      {estimate_season_stats(deriv1, print_plot = FALSE)
+      }, error = function(msg){
+        return(data.frame(full_id = ind_tseries$full_id[[1]]))
+      })
+    
+    stat_avg <- tryCatch(
+      {calc_rice_avg(season_stat)
+      }, error = function(msg){
+        return(data.frame(full_id = ind_tseries$full_id[[1]]))
+      })
+  }) #suppress messages
   
   if(return_intermediate){
     return(list(season_stat, stat_avg))
