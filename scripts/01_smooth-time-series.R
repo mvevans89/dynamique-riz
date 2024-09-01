@@ -24,6 +24,9 @@ library(ggplot2); theme_set(theme_bw())
 library(qs) #better way to save intermediary large files
 library(splines)
 
+library(future)
+library(furrr)
+
 #data wrangling
 library(tidyr)
 library(purrr)
@@ -111,7 +114,8 @@ get_smooth <- function(this_rice, rice_df, print_plot = FALSE, return_details = 
   }
   
   if(return_details){
-    rss_df <- data.frame(fit = c("cubic", "basis", "poly", "nats"),
+    rss_df <- data.frame(full_id = this_rice,
+                         fit = c("cubic", "basis", "poly", "nats"),
                          rss = c(cubic_rss, basis_rss, poly_rss, nats_rss))
     return(list(smooth_df, rss_df))
   } else {
@@ -146,7 +150,8 @@ if(inspect){
   
   get_smooth(this_rice = "w690190105",
              rice_df = flood_long,
-             print_plot = TRUE)
+             print_plot = TRUE, 
+             return_details = TRUE)
 }
 
 
@@ -160,19 +165,31 @@ get_smooth(this_rice = unique(flood_long$full_id)[8001],
 
 system.time({
   plan(multisession, workers = 8)
-  flood_test <- bind_rows(future_map(.x = unique(flood_long$full_id)[1:1000], .f = get_smooth,
-                               rice_df = flood_long))
+  flood_test <- future_map(.x = unique(flood_long$full_id)[1:100], .f = get_smooth,
+                               rice_df = flood_long, return_details = TRUE)
+  future:::ClusterRegistry("stop")
+  test_smooth <- bind_rows(lapply(flood_test, '[[',1))
+  test_rss <- bind_rows(lapply(flood_test, '[[',2))
 })
 
 #should probably parallize this?
 plan(multisession, workers = 10)
-ev_smooth <- bind_rows(future_map(.x = unique(ev_long$full_id), .f = get_smooth,
-                           rice_df = ev_long))
-flood_smooth <- bind_rows(future_map(.x = unique(flood_long$full_id), .f = get_smooth,
-                              rice_df = flood_long))
+ev_smooth <- future_map(.x = unique(ev_long$full_id), .f = get_smooth,
+                           rice_df = ev_long, return_details = TRUE)
+ev_series <- bind_rows(lapply(ev_smooth, "[[",1))
+ev_rss <- bind_rows(lapply(ev_smooth, "[[",2))
+
+flood_smooth <-future_map(.x = unique(flood_long$full_id), .f = get_smooth,
+                              rice_df = flood_long, return_details = TRUE)
+flood_series <- bind_rows(lapply(flood_smooth, "[[",1))
+flood_rss <- bind_rows(lapply(flood_smooth, "[[",2))
+future:::ClusterRegistry("stop")
 
 #save as qs objects
 qsave(rice_id, "data/rice_id_above400.qs")
 qsave(flood_test, "data/smooth/above400/flood-test_smooth.qs", nthreads = 4)
-qsave(ev_smooth, "data/smooth/above400/ev_smooth.qs", nthreads = 4)
-qsave(flood_smooth, "data/smooth/above400/flood_smooth.qs", nthreads = 4)
+qsave(ev_series, "data/smooth/above400/ev_smooth.qs", nthreads = 4)
+qsave(ev_rss, "data/smooth/above400/ev_rss.qs")
+
+qsave(flood_series, "data/smooth/above400/flood_smooth.qs", nthreads = 4)
+qsave(flood_rss, "data/smooth/above400/flood_rss.qs")
