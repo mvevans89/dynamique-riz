@@ -78,8 +78,10 @@ smooth_plot
 dev.off()
 
 # Derivation Figure #######################
+
+#' good IDs: "w668196871", 
 tseries_test <- filter(smooth_subset, full_id == "w669946863")
-# tseries_test <- filter(smooth_subset, full_id %in% sample(rice_id$full_id,1))
+tseries_test <- filter(smooth_subset, full_id %in% sample(rice_id$full_id,1))
 
 # Identify peaks and valleys
 tseries_deriv <- deriv_tseries(tseries_test, print_plot = F)
