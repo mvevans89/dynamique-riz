@@ -79,9 +79,9 @@ dev.off()
 
 # Derivation Figure #######################
 
-#' good IDs: "w668196871", 
-tseries_test <- filter(smooth_subset, full_id == "w669946863")
-tseries_test <- filter(smooth_subset, full_id %in% sample(rice_id$full_id,1))
+#' good IDs: "w668196871", "w670045629"
+tseries_test <- filter(smooth_subset, full_id == "w670045629")
+# tseries_test <- filter(smooth_subset, full_id %in% sample(rice_id$full_id,1))
 
 # Identify peaks and valleys
 tseries_deriv <- deriv_tseries(tseries_test, print_plot = F)
@@ -93,7 +93,7 @@ deriv_plot <- ggplot(tseries_deriv, aes(x = date, y = perc_flood)) +
   xlab("Date") +
   guides(color = "none")
 
-png("figures/derivative.png", res = 300, width = 1200, height = 600)
+png("figures/derivative2.png", res = 600, width = 2400, height = 1200)
 deriv_plot
 dev.off()
 
@@ -109,7 +109,7 @@ season_plot <- rice_stat_season[[2]] +
   ylab("Percent Flooded Area") +
   xlab("Date") 
 
-png("figures/seasons.png", res = 300, width = 1200, height = 600)
+png("figures/seasons2.png", res = 600, width = 3000, height = 1800)
 season_plot
 dev.off()
 
